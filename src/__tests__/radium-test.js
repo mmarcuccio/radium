@@ -1,12 +1,104 @@
 /* eslint-disable react/prop-types */
 
 import Radium from 'index';
+import renderer from 'react-test-renderer';
 import MouseUpListener from 'plugins/mouse-up-listener';
 import React, {Component} from 'react';
 import PropTypes from 'prop-types';
 import ReactDOM from 'react-dom';
 import TestUtils from 'react-dom/test-utils';
 import {getRenderOutput, getElement, getElements} from 'test-helpers';
+
+describe('forwarded refs', () => {
+  /** NOTE: Enzyme does not currently support testing forward refs. There is an open issue:
+   * https://github.com/airbnb/enzyme/issues/1852
+   *
+   * Also, the render function from react-test-renderer must be called with the createNodeMock
+   * option to support testing forward refs.
+   * https://reactjs.org/docs/test-renderer.html#ideas
+   */
+
+  it('can be rendered by the test suite tooling', () => {
+    class TestComponent extends Component {
+      render() {
+        return <div id={1} ref={this.props.forwardedRef} />;
+      }
+    }
+
+    const TestComponentWithForwardRef = React.forwardRef((props, ref) => (
+      <TestComponent {...props} forwardedRef={ref} />
+    ));
+
+    const objRef = React.createRef();
+
+    const output = renderer.create(
+      <TestComponentWithForwardRef ref={objRef} />,
+      {
+        createNodeMock: e => e
+      }
+    );
+
+    expect(output.root.findByType('div').props.id).to.equal(1);
+    expect(!!objRef.current).to.equal(true);
+    expect(objRef.current.type).to.equal('div');
+  });
+
+  it('can be rendered when they wrap a Radium HOC', () => {
+    class TestComponent extends Component {
+      render() {
+        return <div id={1} ref={this.props.forwardedRef} />;
+      }
+    }
+
+    const TestRadiumComponent = Radium(TestComponent);
+
+    const TestRadiumComponentWithForwardRef = React.forwardRef((props, ref) => (
+      <TestRadiumComponent {...props} forwardedRef={ref} />
+    ));
+
+    const objRef = React.createRef();
+
+    const output = renderer.create(
+      <TestRadiumComponentWithForwardRef ref={objRef} />,
+      {
+        createNodeMock: e => e
+      }
+    );
+
+    expect(output.root.findByType('div').props.id).to.equal(1);
+    expect(!!objRef.current).to.equal(true);
+    expect(objRef.current.type).to.equal('div');
+  });
+
+  it('can be rendered when they are wrapped by a Radium HOC', () => {
+    class TestComponent extends Component {
+      render() {
+        return <div id={1} ref={this.props.forwardedRef} />;
+      }
+    }
+
+    const TestComponentWithForwardRef = React.forwardRef((props, ref) => (
+      <TestComponent {...props} forwardedRef={ref} />
+    ));
+
+    const TestComponentWithForwardRefWrappedByRadium = Radium(
+      TestComponentWithForwardRef
+    );
+
+    const objRef = React.createRef();
+
+    const output = renderer.create(
+      <TestComponentWithForwardRefWrappedByRadium ref={objRef} />,
+      {
+        createNodeMock: e => e
+      }
+    );
+
+    expect(output.root.findByType('div').props.id).to.equal(1);
+    expect(!!objRef.current).to.equal(true);
+    expect(objRef.current.type).to.equal('div');
+  });
+});
 
 describe('Radium blackbox tests', () => {
   let sandbox;
